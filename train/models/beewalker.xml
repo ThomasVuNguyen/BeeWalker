@@ -1,0 +1,125 @@
+<!--
+BeeWalker Bipedal Robot Model
+A simple bipedal robot with 6 servo motors (3 per leg: hip, knee, ankle)
+Designed to match the physical hardware specifications.
+-->
+<mujoco model="beewalker">
+    <compiler angle="degree" coordinate="local" inertiafromgeom="true"/>
+    
+    <option timestep="0.002" iterations="10" solver="Newton" integrator="RK4">
+        <flag sensornoise="disable"/>
+    </option>
+    
+    <default>
+        <joint limited="true" damping="0.5" armature="0.01"/>
+        <geom contype="1" conaffinity="1" condim="3" friction="1.0 0.5 0.5" 
+              density="1000" margin="0.001"/>
+        <motor ctrllimited="true" ctrlrange="-1 1"/>
+    </default>
+    
+    <asset>
+        <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="512"/>
+        <texture name="texplane" type="2d" builtin="checker" rgb1="0.2 0.3 0.4" rgb2="0.1 0.15 0.2" 
+                 width="512" height="512" mark="edge" markrgb="0.8 0.8 0.8"/>
+        <material name="MatPlane" texture="texplane" texrepeat="10 10" reflectance="0.2"/>
+        <material name="MatBody" rgba="0.9 0.6 0.1 1"/>
+        <material name="MatLeg" rgba="0.2 0.2 0.2 1"/>
+        <material name="MatFoot" rgba="0.4 0.4 0.4 1"/>
+    </asset>
+    
+    <worldbody>
+        <!-- Ground plane -->
+        <light name="spotlight" mode="targetbodycom" target="torso" pos="0 -1 2" diffuse="0.8 0.8 0.8"/>
+        <geom name="floor" type="plane" size="10 10 0.1" material="MatPlane" conaffinity="1" condim="3"/>
+        
+        <!-- Robot body -->
+        <body name="torso" pos="0 0 0.35">
+            <camera name="track" mode="trackcom" pos="0 -1.5 0.5" xyaxes="1 0 0 0 0.5 1"/>
+            <freejoint name="root"/>
+            
+            <!-- Torso - main body housing electronics -->
+            <geom name="torso_geom" type="box" size="0.06 0.04 0.08" pos="0 0 0" material="MatBody"/>
+            
+            <!-- IMU sensor at center of torso -->
+            <site name="imu_site" pos="0 0 0" size="0.01"/>
+            
+            <!-- Left leg -->
+            <body name="left_thigh" pos="0.04 0 -0.06">
+                <!-- Hip joint (servo 0) -->
+                <joint name="left_hip" type="hinge" axis="0 1 0" range="-60 60" ref="0"/>
+                <geom name="left_thigh_geom" type="capsule" fromto="0 0 0 0 0 -0.08" size="0.02" material="MatLeg"/>
+                
+                <body name="left_shin" pos="0 0 -0.08">
+                    <!-- Knee joint (servo 1) -->
+                    <joint name="left_knee" type="hinge" axis="0 1 0" range="-90 0" ref="0"/>
+                    <geom name="left_shin_geom" type="capsule" fromto="0 0 0 0 0 -0.08" size="0.018" material="MatLeg"/>
+                    
+                    <body name="left_foot" pos="0 0 -0.08">
+                        <!-- Ankle joint (servo 2) -->
+                        <joint name="left_ankle" type="hinge" axis="0 1 0" range="-30 45" ref="0"/>
+                        <geom name="left_foot_geom" type="box" size="0.04 0.02 0.01" pos="0.01 0 -0.01" material="MatFoot"/>
+                    </body>
+                </body>
+            </body>
+            
+            <!-- Right leg -->
+            <body name="right_thigh" pos="-0.04 0 -0.06">
+                <!-- Hip joint (servo 4) -->
+                <joint name="right_hip" type="hinge" axis="0 1 0" range="-60 60" ref="0"/>
+                <geom name="right_thigh_geom" type="capsule" fromto="0 0 0 0 0 -0.08" size="0.02" material="MatLeg"/>
+                
+                <body name="right_shin" pos="0 0 -0.08">
+                    <!-- Knee joint (servo 5) -->
+                    <joint name="right_knee" type="hinge" axis="0 1 0" range="-90 0" ref="0"/>
+                    <geom name="right_shin_geom" type="capsule" fromto="0 0 0 0 0 -0.08" size="0.018" material="MatLeg"/>
+                    
+                    <body name="right_foot" pos="0 0 -0.08">
+                        <!-- Ankle joint (servo 6) -->
+                        <joint name="right_ankle" type="hinge" axis="0 1 0" range="-30 45" ref="0"/>
+                        <geom name="right_foot_geom" type="box" size="0.04 0.02 0.01" pos="0.01 0 -0.01" material="MatFoot"/>
+                    </body>
+                </body>
+            </body>
+        </body>
+    </worldbody>
+    
+    <actuator>
+        <!-- Servo motors - position controlled, matching PCA9685 channels -->
+        <!-- Left leg: channels 0, 1, 2 -->
+        <position name="servo_left_hip" joint="left_hip" kp="20" ctrlrange="-60 60"/>
+        <position name="servo_left_knee" joint="left_knee" kp="20" ctrlrange="-90 0"/>
+        <position name="servo_left_ankle" joint="left_ankle" kp="15" ctrlrange="-30 45"/>
+        
+        <!-- Right leg: channels 4, 5, 6 -->
+        <position name="servo_right_hip" joint="right_hip" kp="20" ctrlrange="-60 60"/>
+        <position name="servo_right_knee" joint="right_knee" kp="20" ctrlrange="-90 0"/>
+        <position name="servo_right_ankle" joint="right_ankle" kp="15" ctrlrange="-30 45"/>
+    </actuator>
+    
+    <sensor>
+        <!-- IMU sensors -->
+        <accelerometer name="accel" site="imu_site"/>
+        <gyro name="gyro" site="imu_site"/>
+        
+        <!-- Joint position sensors -->
+        <jointpos name="left_hip_pos" joint="left_hip"/>
+        <jointpos name="left_knee_pos" joint="left_knee"/>
+        <jointpos name="left_ankle_pos" joint="left_ankle"/>
+        <jointpos name="right_hip_pos" joint="right_hip"/>
+        <jointpos name="right_knee_pos" joint="right_knee"/>
+        <jointpos name="right_ankle_pos" joint="right_ankle"/>
+        
+        <!-- Joint velocity sensors -->
+        <jointvel name="left_hip_vel" joint="left_hip"/>
+        <jointvel name="left_knee_vel" joint="left_knee"/>
+        <jointvel name="left_ankle_vel" joint="left_ankle"/>
+        <jointvel name="right_hip_vel" joint="right_hip"/>
+        <jointvel name="right_knee_vel" joint="right_knee"/>
+        <jointvel name="right_ankle_vel" joint="right_ankle"/>
+        
+        <!-- Torso state -->
+        <framepos name="torso_pos" objtype="body" objname="torso"/>
+        <framequat name="torso_quat" objtype="body" objname="torso"/>
+        <framelinvel name="torso_vel" objtype="body" objname="torso"/>
+    </sensor>
+</mujoco>

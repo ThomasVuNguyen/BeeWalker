@@ -30,4 +30,4 @@ Specification:
 - All code in train/ folder
 - Always use train/venv/ as virtual env
 - Always use requirements.txt to install packages
-- I want to have a simple web interface to view the robot training process in realtime, on port 1306. This will be viewed from a browser on a different computer.
+- I want to have a simple web interface to view the robot training process in realtime, on port 1306. This will be viewed from a browser on a different computer. Refer to reference/ for reference.

@@ -1,17 +1,5 @@
-# BeeWalker Training - Gymnasium + Stable Baselines3 Stack
-gymnasium>=0.29.0
-stable-baselines3>=2.2.0
-mujoco>=3.0.0
-tensorboard
-numpy<2
+gymnasium[mujoco]
 torch
+flask
+numpy
 opencv-python
-
-# Web Dashboard
-fastapi
-uvicorn[standard]
-websockets
-requests
-
-# Utility
-tqdm
