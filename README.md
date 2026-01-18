@@ -1,2 +1,2 @@
 # BeeWalker
-Build &amp; train a walking robot
+Build & train a walking robot
