@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+*.egg-info/
+
+# Training artifacts
+train/venv/
+train/logs/
+train/*.zip
+train/src/beewalker.xml
+*.pth
+
+# Reference project (not part of BeeWalker)
+Starmind-Pico/
+walker/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>BeeWalker Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 320px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: #4ade80;
+            margin-top: 4px;
+        }
+
+        #chart-container {
+            flex: 1;
+            min-height: 200px;
+            margin-top: 20px;
+        }
+
+        #viz-container {
+            background: #000;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        #viz-video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 18px;
+            padding: 100px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="sidebar">
+        <h1>🐝 BeeWalker</h1>
+        <div class="stat-box">
+            <div class="stat-label">Step</div>
+            <div class="stat-value" id="gen-val">0</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Mean Reward</div>
+            <div class="stat-value" id="reward-val">0.00</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Status</div>
+            <div style="color: #bbb; font-size: 14px; margin-top: 4px;" id="status-val">
+                <span class="status-indicator"></span> Waiting...
+            </div>
+        </div>
+        <div id="chart-container">
+            <canvas id="rewardChart"></canvas>
+        </div>
+    </div>
+    <div class="main">
+        <div id="viz-container">
+            <img id="viz-video" src="" alt="">
+            <div class="placeholder" id="placeholder">
+                🤖 Training visualization will appear here
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart setup
+        const ctx = document.getElementById('rewardChart').getContext('2d');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Mean Reward',
+                    data: [],
+                    borderColor: '#4ade80',
+                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    tension: 0.3,
+                    pointRadius: 0,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { display: false },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: 'rgba(255,255,255,0.5)' }
+                    }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // WebSocket connection
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        let frameQueue = [];
+        let isPlaying = false;
+
+        ws.onmessage = function (event) {
+            const msg = JSON.parse(event.data);
+
+            if (msg.type === 'update') {
+                document.getElementById('gen-val').innerText = msg.data.generation.toLocaleString();
+                document.getElementById('reward-val').innerText = msg.data.mean_reward.toFixed(2);
+                document.getElementById('status-val').innerHTML =
+                    `<span class="status-indicator"></span> ${msg.data.status}`;
+
+                chart.data.labels.push(msg.data.generation);
+                chart.data.datasets[0].data.push(msg.data.mean_reward);
+                if (chart.data.labels.length > 100) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                }
+                chart.update('none');
+            }
+            else if (msg.type === 'viz' && msg.data.frames) {
+                document.getElementById('placeholder').style.display = 'none';
+                frameQueue = msg.data.frames;
+                if (!isPlaying) playFrames();
+            }
+        };
+
+        function playFrames() {
+            if (frameQueue.length === 0) {
+                isPlaying = false;
+                return;
+            }
+            isPlaying = true;
+
+            const img = document.getElementById('viz-video');
+            let idx = 0;
+
+            const interval = setInterval(() => {
+                if (idx >= frameQueue.length) {
+                    clearInterval(interval);
+                    isPlaying = false;
+                    return;
+                }
+                img.src = 'data:image/jpeg;base64,' + frameQueue[idx];
+                idx++;
+            }, 33); // ~30fps playback
+        }
+    </script>
+</body>
+
+</html>
